@@ -1,0 +1,10 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# created at runtime
+locations.json
+state.json
+*.tmp

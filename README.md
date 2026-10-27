@@ -1,91 +1,67 @@
 # OpenSummit
 
-OpenSummit is a lightweight Discord bot that evaluates weekend weather conditions and notifies you when outdoor activities like hiking or camping are realistically worth it.
+Small Discord bot that checks the weather forecast for the next weekend and posts in a channel when it looks good enough for a hike or a night out camping.
 
-It does not forward raw forecasts.
-It makes a decision.
+It doesn't send you the forecast every day. It only posts when a weekend turns into a **GO**, and again if a GO weekend gets worse and becomes a **NO-GO**.
 
----
+## How it decides
 
-## Overview
+For every location the bot gets the daily forecast for Saturday and Sunday from [Open-Meteo](https://open-meteo.com/) (free, no API key). Both days have to pass all of these:
 
-OpenSummit monitors upcoming weekend forecasts and applies a deterministic evaluation model based on configurable thresholds.
+| Setting | Default | Meaning |
+|---|---|---|
+| `MIN_NIGHT_C` | 8 | lowest temperature of the day must be at least this |
+| `MAX_DAY_C` | 26 | highest temperature must not be above this |
+| `MAX_RAIN_MM` | 0.2 | total rain of the day in mm |
+| `MAX_WIND_KMH` | 25 | max wind speed, gusts count too |
 
-Instead of spamming weather updates, the bot calculates a structured outcome:
+If one of them fails it's a NO-GO and the embed lists the reasons.
 
-**GO** – Conditions suitable for hiking or camping
-**NO-GO** – Conditions not recommended
+The check runs every `POLL_MINUTES` (default 10). The last decision per location is saved in `state.json`, so you don't get the same message twice.
 
-Notifications are only sent when the decision changes.
+## Setup
 
----
+1. Create an application and a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and copy the token.
+2. Invite the bot with the scopes `bot` and `applications.commands`. It needs *View Channel*, *Send Messages* and *Embed Links* in the channel you want the messages in.
+3. Turn on developer mode in Discord, right click the channel and copy its ID.
+4. Then:
 
-## Core Features
+```sh
+git clone https://github.com/carlos-ngi/OpenSummit.git
+cd OpenSummit
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # put in your token and channel id
+python main.py
+```
 
-- Automatic weekend detection  
-- Temperature, wind, precipitation, and cloud evaluation  
-- Score-based or rule-based decision engine  
-- State persistence to prevent repeated alerts  
-- Minimal Discord output  
-- Designed for self-hosting environments  
+Python 3.10 or newer is needed.
 
----
+On the first start a `locations.json` with the default location from `.env` is created. After that you manage the locations with the commands below.
 
-## Architecture
+## Commands
 
-OpenSummit is structured into independent components:
+| Command | |
+|---|---|
+| `/listloc` | show all locations |
+| `/addloc name lat lon` | add a location, it gets checked right away |
+| `/remloc name` | remove a location |
+| `/check` | run the check now instead of waiting for the next poll |
 
-1. **Forecast Fetcher**  
-   Retrieves weather data from an external API.
+It can take a moment after the first start until Discord shows the slash commands.
 
-2. **Decision Engine**  
-   Applies configurable thresholds or scoring rules.
+## Notes
 
-3. **State Manager**  
-   Stores the last weekend decision to avoid duplicate notifications.
+- The weekend is always the next Saturday + Sunday. On a Sunday that already means the next weekend.
+- Mountain forecasts can be quite off, so use it as a hint and still check MeteoSwiss or similar before you go. This is not a safety tool.
 
-4. **Discord Interface**  
-   Sends formatted messages to a defined channel.
+## Ideas
 
-This separation ensures clarity and maintainability.
+- thresholds per location
+- ping a role on GO
+- Saturday-only / Sunday-only option
 
----
+## License
 
-## Configuration
-
-You define what “good weather” means.
-
-Configurable parameters may include:
-
-- Minimum daytime temperature
-- Maximum daytime temperature  
-- Maximum wind speed  
-- Maximum precipitation probability  
-- Maximum cloud coverage  
-- Minimum required decision score  
-
-All thresholds are adjustable.
-
----
-
-## Intended Use
-
-OpenSummit is designed for:
-
-- Hiking groups  
-- Camping enthusiasts  
-- Outdoor communities  
-- Personal automation setups  
-
-It is not a safety-critical system and does not replace official weather advisories.
-
----
-
-## Roadmap
-
-- Region selection per user  
-- Role-based notifications  
-- Slash command configuration  
-- Multi-location support  
-- Optional web dashboard
-
+MIT, see [LICENSE](LICENSE).
