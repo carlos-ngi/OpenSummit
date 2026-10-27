@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "opensummit"
+version = "0.2.0"
+description = "Discord bot that tells you if the weekend is good for hiking or camping"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "discord.py>=2.4",
+    "aiohttp>=3.9",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+opensummit = "opensummit.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/carlos-ngi/OpenSummit"
+
+[tool.setuptools]
+packages = ["opensummit"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

@@ -1,66 +1,122 @@
 # OpenSummit
 
-Small Discord bot that checks the weather forecast for the next weekend and posts in a channel when it looks good enough for a hike or a night out camping.
+A Discord bot that keeps an eye on the weather for your favourite spots and tells you when the next weekend is good for a hike or a night outside.
 
-It doesn't send you the forecast every day. It only posts when a weekend turns into a **GO**, and again if a GO weekend gets worse and becomes a **NO-GO**.
+It doesn't spam the forecast every day. It posts when a weekend starts to look good, and again if it falls apart.
+
+```
+🟢 Good weekend at Jöriseen
+🌤️ Sat 31.10.          🌤️ Sun 1.11.
+Mostly clear           Mostly clear
+🌡️ 9 to 20 °C          🌡️ 10 to 21 °C
+💧 0.0 mm (10%)        💧 0.0 mm (5%)
+💨 10 km/h, gusts 20   💨 12 km/h, gusts 25
+✅ fine                ✅ fine
+```
 
 ## How it decides
 
-For every location the bot gets the daily forecast for Saturday and Sunday from [Open-Meteo](https://open-meteo.com/) (free, no API key). Both days have to pass all of these:
+For every spot the bot gets the forecast from [Open-Meteo](https://open-meteo.com/) (free, no API key). The forecast is corrected to the real height of the spot, so a summit gets summit weather and not the weather of the valley below.
 
-| Setting | Default | Meaning |
+A day is good when all of these hold:
+
+| Rule | Default |
+|---|---|
+| coldest temperature at least | 8 °C |
+| warmest temperature at most | 26 °C |
+| rain at most | 0.2 mm |
+| chance of rain at most | 50 % |
+| wind and gusts below | 25 km/h |
+| no thunderstorms | |
+
+Then the weekend gets one of these:
+
+- 🟢 **Good weekend**: both days are fine, go camping
+- 🟡 **Only Saturday / Sunday**: good for a day trip
+- 🔴 **Not this weekend**: never posted on its own, only if a weekend that looked good gets worse
+
+The bot checks every hour and remembers what it already posted, so you only hear about changes.
+
+## Commands
+
+| Command | Who | |
 |---|---|---|
-| `MIN_NIGHT_C` | 8 | lowest temperature of the day must be at least this |
-| `MAX_DAY_C` | 26 | highest temperature must not be above this |
-| `MAX_RAIN_MM` | 0.2 | total rain of the day in mm |
-| `MAX_WIND_KMH` | 25 | max wind speed, gusts count too |
+| `/weekend` | everyone | forecast for all spots (or just one) right now |
+| `/spot list` | everyone | all spots with a map link |
+| `/spot add` | admins | add a spot, just start typing a place name or paste coordinates |
+| `/spot remove` | admins | remove a spot |
+| `/settings show` | admins | current rules and channel |
+| `/settings rules` | admins | change the rules, e.g. `/settings rules wind_kmh:35` |
+| `/settings channel` | admins | where the bot posts (default: the channel you run it in) |
+| `/settings reset` | admins | rules back to the defaults |
 
-If one of them fails it's a NO-GO and the embed lists the reasons.
-
-The check runs every `POLL_MINUTES` (default 10). The last decision per location is saved in `state.json`, so you don't get the same message twice.
+"Admins" means everyone with the *Manage Server* permission. You can change that per command under Server Settings → Integrations.
 
 ## Setup
 
-1. Create an application and a bot in the [Discord Developer Portal](https://discord.com/developers/applications) and copy the token.
-2. Invite the bot with the scopes `bot` and `applications.commands`. It needs *View Channel*, *Send Messages* and *Embed Links* in the channel you want the messages in.
-3. Turn on developer mode in Discord, right click the channel and copy its ID.
-4. Then:
+**1. Create the bot**
+
+1. Make a new application in the [Discord Developer Portal](https://discord.com/developers/applications), go to *Bot* and copy the token.
+2. Under *OAuth2 → URL Generator* pick the scopes `bot` and `applications.commands` and the permissions *View Channels*, *Send Messages* and *Embed Links*. Open the link and add the bot to your server.
+
+**2. Run it**
+
+With Docker:
+
+```sh
+git clone https://github.com/carlos-ngi/OpenSummit.git
+cd OpenSummit
+cp .env.example .env    # put your token in there
+docker compose up -d
+```
+
+Or with Python 3.11 or newer:
 
 ```sh
 git clone https://github.com/carlos-ngi/OpenSummit.git
 cd OpenSummit
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # put in your token and channel id
-python main.py
+pip install .
+cp .env.example .env    # put your token in there
+opensummit
 ```
 
-Python 3.10 or newer is needed.
+**3. In Discord**
 
-On the first start a `locations.json` with the default location from `.env` is created. After that you manage the locations with the commands below.
+Run `/settings channel` in the channel where the bot should post and add your first spot with `/spot add`. Done.
 
-## Commands
+Slash commands can take a while to show up the first time. If you put your server ID in `GUILD_ID` they show up right away.
 
-| Command | |
-|---|---|
-| `/listloc` | show all locations |
-| `/addloc name lat lon` | add a location, it gets checked right away |
-| `/remloc name` | remove a location |
-| `/check` | run the check now instead of waiting for the next poll |
+## Configuration
 
-It can take a moment after the first start until Discord shows the slash commands.
+Everything except the token can also be changed in Discord. The values in `.env` are only the starting point.
 
-## Notes
+| Variable | Default | |
+|---|---|---|
+| `DISCORD_TOKEN` | | required |
+| `CHANNEL_ID` | | channel to post in, `/settings channel` overrides it |
+| `GUILD_ID` | | your server ID, for instant slash commands |
+| `POLL_MINUTES` | 60 | how often to check |
+| `DATA_DIR` | `data` | where `data.json` is stored |
+| `MIN_NIGHT_C` `MAX_DAY_C` `MAX_RAIN_MM` `MAX_RAIN_CHANCE` `MAX_WIND_KMH` | see above | default rules |
 
-- The weekend is always the next Saturday + Sunday. On a Sunday that already means the next weekend.
-- Mountain forecasts can be quite off, so use it as a hint and still check MeteoSwiss or similar before you go. This is not a safety tool.
+## Coming from the old version
 
-## Ideas
+The old single `main.py` is gone. Your `locations.json` is picked up automatically on the first start if you start the bot in the same folder. The `!` commands and the old `/addloc`, `/remloc`, `/listloc` and `/check` are replaced by the commands above. `LAT`, `LON` and `DEFAULT_LOCATION_NAME` aren't used anymore, add spots with `/spot add` instead.
 
-- thresholds per location
-- ping a role on GO
-- Saturday-only / Sunday-only option
+## Development
+
+```sh
+pip install -e ".[dev]"
+pytest
+ruff check .
+```
+
+## Good to know
+
+- "The weekend" is always the next Saturday and Sunday. On a Sunday that's already the next one.
+- Weather in the mountains is hard to predict, especially a week ahead. Use this as a hint and check MeteoSwiss or your local weather service before you go. This is not a safety tool.
 
 ## License
 
